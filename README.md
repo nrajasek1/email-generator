@@ -1,4 +1,15 @@
-# Email Generator
+# AI Email Generator
+
+## 🚀 Overview
+This project is an AI-powered email generation system that creates structured emails (subject + body) based on user intent.
+
+It is designed as a multi-interface application supporting:
+- CLI (Command Line)
+- Web UI
+- REST API
+
+The system demonstrates how to build production-ready AI applications using modular architecture, configurable LLM providers, and test-driven development.
+
 
 Generate a plain-text email subject and body from three inputs:
 
@@ -14,12 +25,30 @@ The project exposes the same shared generator through three interfaces:
 
 ## Features
 
-- Uses the OpenAI Responses API for OpenAI requests
-- Supports OpenRouter as an alternate provider
-- Keeps generation logic in one shared module
-- Returns plain-text output only
-- Includes a browser UI for manual testing
-- Includes automated tests with coverage enforcement
+- Multi-interface support: CLI, Web UI, REST API
+- Pluggable LLM provider support (OpenAI, OpenRouter)
+- Centralized prompt generation logic
+- Structured output (subject + body)
+- Automated test coverage (80%+)
+- Clean modular architecture
+
+## 🏗 Architecture
+
+User Input (CLI / API / Web)
+        ↓
+Prompt Builder (`generator.py`)
+        ↓
+LLM Provider (OpenAI / OpenRouter)
+        ↓
+Response Parsing + Validation
+        ↓
+Formatted Output (Subject + Body)
+
+Key Design Decisions:
+- Shared generation logic across all interfaces
+- Provider abstraction via configuration
+- Strict response validation using schemas
+- Separation of concerns (CLI, Web, Core logic)
 
 ## Requirements
 
@@ -188,3 +217,11 @@ For someone cloning the repo and testing it locally:
   https://platform.openai.com/docs/quickstart?api-mode=responses&lang=python
 - OpenRouter documents an OpenAI-compatible Responses API at:
   https://openrouter.ai/docs/api-reference/responses-api/overview
+
+## 🧠 What I Learned
+
+- Built a modular AI application with shared core logic
+- Implemented multi-interface access (CLI, API, Web)
+- Integrated multiple LLM providers (OpenAI, OpenRouter)
+- Applied environment-based configuration management
+- Practiced test-driven development with coverage enforcement
