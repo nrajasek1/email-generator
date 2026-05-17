@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi import FastAPI, Form, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from email_generator.generator import generate_email
+from email_generator.api import router as api_router
+from email_generator.core import generate_email
 from email_generator.schemas import EmailRequest, EmailResponse
 
 PACKAGE_DIR = Path(__file__).resolve().parent
@@ -14,6 +15,7 @@ templates = Jinja2Templates(directory=str(PACKAGE_DIR / "templates"))
 EMPTY_FORM_DATA = {"purpose": "", "tone": "", "context": ""}
 
 app = FastAPI(title="Email Generator")
+app.include_router(api_router)
 
 
 def _render_page(
@@ -59,11 +61,3 @@ def generate_from_form(
             form_data=form_data,
             status_code=400,
         )
-
-
-@app.post("/api/generate", response_model=EmailResponse)
-def generate_from_api(payload: EmailRequest) -> EmailResponse:
-    try:
-        return generate_email(payload)
-    except Exception as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
