@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 
-from email_generator.generator import generate_email
+from email_generator.core import generate_email
 from email_generator.schemas import EmailRequest
 
 

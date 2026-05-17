@@ -59,7 +59,7 @@ def test_form_submission_renders_error(monkeypatch) -> None:
 
 def test_api_generate_returns_json(monkeypatch) -> None:
     monkeypatch.setattr(
-        "email_generator.web.generate_email",
+        "email_generator.api.generate_email",
         lambda request: {"subject": "Hello", "body": "Body text", "model": "gpt-5-mini"},
     )
 
@@ -77,7 +77,7 @@ def test_api_generate_returns_json(monkeypatch) -> None:
 
 
 def test_api_generate_returns_error(monkeypatch) -> None:
-    monkeypatch.setattr("email_generator.web.generate_email", lambda request: (_ for _ in ()).throw(ValueError("bad request")))
+    monkeypatch.setattr("email_generator.api.generate_email", lambda request: (_ for _ in ()).throw(ValueError("bad request")))
 
     response = client.post(
         "/api/generate",

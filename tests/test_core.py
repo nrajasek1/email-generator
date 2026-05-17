@@ -4,7 +4,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from email_generator.generator import _chat_message_to_text, _extract_json, _generate_with_openai, _generate_with_openrouter, _normalize_text, build_user_prompt, generate_email
+from email_generator.core import _normalize_text, generate_email
+from email_generator.prompt import build_user_prompt
+from email_generator.providers import (
+    _chat_message_to_text,
+    _extract_json,
+    _generate_with_openai,
+    _generate_with_openrouter,
+)
 from email_generator.schemas import EmailRequest
 
 
@@ -35,7 +42,7 @@ def test_build_user_prompt_includes_all_fields() -> None:
 
 
 def test_system_instructions_include_non_invention_guardrails() -> None:
-    from email_generator.generator import SYSTEM_INSTRUCTIONS
+    from email_generator.prompt import SYSTEM_INSTRUCTIONS
 
     assert "Do not invent facts" in SYSTEM_INSTRUCTIONS
     assert "Treat the provided context as the source of truth" in SYSTEM_INSTRUCTIONS
@@ -102,7 +109,7 @@ def test_generate_email_uses_openai_without_reasoning_when_disabled(monkeypatch:
             self.responses = FakeResponses()
 
     monkeypatch.setattr(
-        "email_generator.generator.get_settings",
+        "email_generator.core.get_settings",
         lambda: SimpleNamespace(
             provider="openai",
             api_key="key-123",
@@ -112,7 +119,7 @@ def test_generate_email_uses_openai_without_reasoning_when_disabled(monkeypatch:
             base_url=None,
         ),
     )
-    monkeypatch.setattr("email_generator.generator.OpenAI", FakeOpenAI)
+    monkeypatch.setattr("email_generator.core.OpenAI", FakeOpenAI)
 
     result = generate_email(
         EmailRequest(purpose="Follow up", tone="Warm", context="Share next steps")
@@ -140,7 +147,7 @@ def test_generate_email_includes_reasoning_when_enabled(monkeypatch: pytest.Monk
             self.responses = FakeResponses()
 
     monkeypatch.setattr(
-        "email_generator.generator.get_settings",
+        "email_generator.core.get_settings",
         lambda: SimpleNamespace(
             provider="openai",
             api_key="key-123",
@@ -150,7 +157,7 @@ def test_generate_email_includes_reasoning_when_enabled(monkeypatch: pytest.Monk
             base_url=None,
         ),
     )
-    monkeypatch.setattr("email_generator.generator.OpenAI", FakeOpenAI)
+    monkeypatch.setattr("email_generator.core.OpenAI", FakeOpenAI)
 
     generate_email(EmailRequest(purpose="Intro", tone="Formal", context="New client outreach"))
 
@@ -174,7 +181,7 @@ def test_generate_email_passes_base_url_for_openrouter(monkeypatch: pytest.Monke
             self.chat = SimpleNamespace(completions=FakeChatCompletions())
 
     monkeypatch.setattr(
-        "email_generator.generator.get_settings",
+        "email_generator.core.get_settings",
         lambda: SimpleNamespace(
             provider="openrouter",
             api_key="router-key",
@@ -184,7 +191,7 @@ def test_generate_email_passes_base_url_for_openrouter(monkeypatch: pytest.Monke
             base_url="https://openrouter.ai/api/v1",
         ),
     )
-    monkeypatch.setattr("email_generator.generator.OpenAI", FakeOpenAI)
+    monkeypatch.setattr("email_generator.core.OpenAI", FakeOpenAI)
 
     generate_email(EmailRequest(purpose="Intro", tone="Formal", context="New client outreach"))
 
@@ -203,7 +210,7 @@ def test_generate_email_normalizes_output(monkeypatch: pytest.MonkeyPatch) -> No
             self.responses = FakeResponses()
 
     monkeypatch.setattr(
-        "email_generator.generator.get_settings",
+        "email_generator.core.get_settings",
         lambda: SimpleNamespace(
             provider="openai",
             api_key="key-123",
@@ -213,7 +220,7 @@ def test_generate_email_normalizes_output(monkeypatch: pytest.MonkeyPatch) -> No
             base_url=None,
         ),
     )
-    monkeypatch.setattr("email_generator.generator.OpenAI", FakeOpenAI)
+    monkeypatch.setattr("email_generator.core.OpenAI", FakeOpenAI)
 
     result = generate_email(EmailRequest(purpose="Follow up", tone="Warm", context="Share next steps"))
 
@@ -231,7 +238,7 @@ def test_generate_email_rejects_missing_subject_or_body(monkeypatch: pytest.Monk
             self.responses = FakeResponses()
 
     monkeypatch.setattr(
-        "email_generator.generator.get_settings",
+        "email_generator.core.get_settings",
         lambda: SimpleNamespace(
             provider="openai",
             api_key="key-123",
@@ -241,7 +248,7 @@ def test_generate_email_rejects_missing_subject_or_body(monkeypatch: pytest.Monk
             base_url=None,
         ),
     )
-    monkeypatch.setattr("email_generator.generator.OpenAI", FakeOpenAI)
+    monkeypatch.setattr("email_generator.core.OpenAI", FakeOpenAI)
 
     with pytest.raises(ValueError, match="missing a subject or body"):
         generate_email(EmailRequest(purpose="Follow up", tone="Warm", context="Share next steps"))
