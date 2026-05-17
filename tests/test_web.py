@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
+from email_generator.errors import OutputContractError
 from email_generator.web import app
 
 
@@ -76,8 +77,11 @@ def test_api_generate_returns_json(monkeypatch) -> None:
     assert response.json()["subject"] == "Hello"
 
 
-def test_api_generate_returns_error(monkeypatch) -> None:
-    monkeypatch.setattr("email_generator.api.generate_email", lambda request: (_ for _ in ()).throw(ValueError("bad request")))
+def test_api_generate_returns_typed_error_envelope(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "email_generator.api.generate_email",
+        lambda request: (_ for _ in ()).throw(OutputContractError("model misbehaved")),
+    )
 
     response = client.post(
         "/api/generate",
@@ -88,5 +92,15 @@ def test_api_generate_returns_error(monkeypatch) -> None:
         },
     )
 
+    assert response.status_code == 502
+    assert response.json() == {
+        "error": {"code": "output_contract", "message": "model misbehaved"}
+    }
+
+
+def test_api_generate_returns_input_invalid_envelope_for_missing_field() -> None:
+    response = client.post("/api/generate", json={"purpose": "x", "tone": "y"})
+
     assert response.status_code == 400
-    assert response.json()["detail"] == "bad request"
+    body = response.json()
+    assert body["error"]["code"] == "input_invalid"
