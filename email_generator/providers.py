@@ -48,23 +48,16 @@ def _chat_message_to_text(message: Any) -> str:
 
 
 def _generate_with_openrouter(client: OpenAI, request: EmailRequest, model: str, max_output_tokens: int) -> Dict[str, Any]:
-    last_error: Exception | None = None
-    for _ in range(3):
-        response = client.chat.completions.create(
-            model=model,
-            messages=[
-                {"role": "system", "content": SYSTEM_INSTRUCTIONS},
-                {"role": "user", "content": build_user_prompt(request)},
-            ],
-            max_tokens=max_output_tokens,
-        )
-        content = _chat_message_to_text(response.choices[0].message)
-        try:
-            return _extract_json(content)
-        except OutputContractError as exc:
-            last_error = exc
-
-    raise OutputContractError("OpenRouter returned an unusable response after 3 attempts.") from last_error
+    response = client.chat.completions.create(
+        model=model,
+        messages=[
+            {"role": "system", "content": SYSTEM_INSTRUCTIONS},
+            {"role": "user", "content": build_user_prompt(request)},
+        ],
+        max_tokens=max_output_tokens,
+    )
+    content = _chat_message_to_text(response.choices[0].message)
+    return _extract_json(content)
 
 
 def _generate_with_openai(client: OpenAI, request: EmailRequest, model: str, reasoning_effort: str, max_output_tokens: int) -> Dict[str, Any]:

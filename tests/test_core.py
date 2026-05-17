@@ -299,30 +299,79 @@ def test_generate_with_openrouter_parses_chat_completion() -> None:
     assert parsed == {"subject": "Hello", "body": "World"}
 
 
-def test_generate_with_openrouter_retries_after_empty_response() -> None:
+def test_generate_email_retries_on_output_contract_error(monkeypatch: pytest.MonkeyPatch) -> None:
     call_count = {"value": 0}
 
-    class FakeChatCompletions:
+    class FakeResponses:
         def create(self, **kwargs):
             call_count["value"] += 1
-            if call_count["value"] == 1:
-                message = SimpleNamespace(content="")
-            else:
-                message = SimpleNamespace(content='{"subject": "Hello", "body": "World"}')
-            choice = SimpleNamespace(message=message)
-            return SimpleNamespace(choices=[choice])
+            text = "" if call_count["value"] == 1 else '{"subject": "Hello", "body": "World"}'
+            return SimpleNamespace(output_text=text)
 
-    client = SimpleNamespace(chat=SimpleNamespace(completions=FakeChatCompletions()))
+    class FakeOpenAI:
+        def __init__(self, api_key: str) -> None:
+            self.responses = FakeResponses()
 
-    parsed = _generate_with_openrouter(
-        client=client,
-        request=EmailRequest(purpose="Intro", tone="Warm", context="Context"),
-        model="openrouter/free",
-        max_output_tokens=120,
+    monkeypatch.setattr(
+        "email_generator.core.get_settings",
+        lambda: SimpleNamespace(
+            provider="openai",
+            api_key="key-123",
+            model="gpt-5-mini",
+            reasoning_effort="none",
+            max_output_tokens=800,
+            base_url=None,
+        ),
     )
+    monkeypatch.setattr("email_generator.core.OpenAI", FakeOpenAI)
 
+    result = generate_email(EmailRequest(purpose="P", tone="T", context="C"))
+
+    assert result.subject == "Hello"
     assert call_count["value"] == 2
-    assert parsed == {"subject": "Hello", "body": "World"}
+
+
+def test_generate_email_fails_after_max_attempts(monkeypatch: pytest.MonkeyPatch) -> None:
+    call_count = {"value": 0}
+
+    class FakeResponses:
+        def create(self, **kwargs):
+            call_count["value"] += 1
+            return SimpleNamespace(output_text="")
+
+    class FakeOpenAI:
+        def __init__(self, api_key: str) -> None:
+            self.responses = FakeResponses()
+
+    monkeypatch.setattr(
+        "email_generator.core.get_settings",
+        lambda: SimpleNamespace(
+            provider="openai",
+            api_key="key-123",
+            model="gpt-5-mini",
+            reasoning_effort="none",
+            max_output_tokens=800,
+            base_url=None,
+        ),
+    )
+    monkeypatch.setattr("email_generator.core.OpenAI", FakeOpenAI)
+
+    with pytest.raises(OutputContractError, match="after 3 attempts"):
+        generate_email(EmailRequest(purpose="P", tone="T", context="C"))
+
+    assert call_count["value"] == 3
+
+
+def test_generate_email_emits_info_log_on_success(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+    import logging
+
+    _patch_openai_with_output(monkeypatch, '{"subject": "Hi", "body": "There"}')
+    caplog.set_level(logging.INFO, logger="email_generator.core")
+
+    generate_email(EmailRequest(purpose="P", tone="T", context="C"))
+
+    info_messages = [r.getMessage() for r in caplog.records if r.levelname == "INFO"]
+    assert any("generated email" in msg and "model=gpt-5-mini" in msg for msg in info_messages)
 
 
 def test_generate_with_openai_parses_response_output_text() -> None:
