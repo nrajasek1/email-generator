@@ -139,9 +139,13 @@ email-generator/
   email_generator/
     __init__.py
     __main__.py
+    api.py
     cli.py
     config.py
-    generator.py
+    core.py
+    errors.py
+    prompt.py
+    providers.py
     schemas.py
     web.py
     templates/
@@ -150,23 +154,31 @@ email-generator/
     conftest.py
     test_cli.py
     test_config.py
-    test_generator.py
+    test_core.py
+    test_equivalence.py
     test_main_module.py
     test_web.py
   .env.example
   .gitignore
-  main.py
-  pyproject.toml
+  AGENT.md
   README.md
+  plan.md
+  pyproject.toml
 ```
 
 ## How It Works
 
-- `email_generator/generator.py` builds the prompt, calls the provider, extracts JSON, and validates the response
+- `email_generator/core.py` orchestrates a request: call the provider, validate raw output, normalize, retry on contract failure, log the outcome
+- `email_generator/prompt.py` holds the system instructions and user-prompt template
+- `email_generator/providers.py` wraps the OpenAI and OpenRouter calls (single-attempt; retry lives in core)
+- `email_generator/schemas.py` defines `EmailRequest`, `LLMRawOutput` (strict, `extra="forbid"`), and `EmailResponse`
+- `email_generator/errors.py` defines typed errors that map to the nested error envelope (`InputValidationError`, `OutputContractError`, `ProviderError`)
 - `email_generator/config.py` loads provider settings from environment variables
 - `email_generator/cli.py` exposes the command-line interface
-- `email_generator/web.py` serves the HTML form and JSON API
-- `email_generator/schemas.py` defines request and response models
+- `email_generator/api.py` exposes the `/api/generate` JSON route as a FastAPI router
+- `email_generator/web.py` serves the HTML form and mounts the API router; registers the error-envelope exception handlers
+
+See `AGENT.md` for the contract this implementation must satisfy.
 
 ## Contributor Checklist
 
