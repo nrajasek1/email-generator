@@ -35,4 +35,4 @@ email_generator = ["templates/*.html"]
 include = ["email_generator*"]
 
 [tool.pytest.ini_options]
-addopts = "--cov=email_generator --cov-report=term-missing --cov-fail-under=80"
+addopts = "--cov=email_generator --cov-report=term-missing --cov-fail-under=95"
