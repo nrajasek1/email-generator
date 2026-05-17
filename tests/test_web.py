@@ -40,6 +40,21 @@ def test_form_submission_renders_result(monkeypatch) -> None:
     assert "Here are the next steps." in response.text
 
 
+def test_form_submission_renders_typed_error_with_status_code(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "email_generator.web.generate_email",
+        lambda request: (_ for _ in ()).throw(OutputContractError("model misbehaved")),
+    )
+
+    response = client.post(
+        "/",
+        data={"purpose": "Follow up", "tone": "Warm", "context": "Share next steps"},
+    )
+
+    assert response.status_code == 502
+    assert "model misbehaved" in response.text
+
+
 def test_form_submission_renders_error(monkeypatch) -> None:
     monkeypatch.setattr("email_generator.web.generate_email", lambda request: (_ for _ in ()).throw(ValueError("boom")))
 

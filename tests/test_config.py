@@ -14,6 +14,29 @@ def test_get_settings_raises_when_api_key_missing(monkeypatch: pytest.MonkeyPatc
         get_settings()
 
 
+def test_get_settings_rejects_invalid_provider(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM_PROVIDER", "azure")
+
+    with pytest.raises(ValueError, match="LLM_PROVIDER must be one of"):
+        get_settings()
+
+
+def test_get_settings_requires_openrouter_key_when_forced(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM_PROVIDER", "openrouter")
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+
+    with pytest.raises(ValueError, match="OPENROUTER_API_KEY is not set"):
+        get_settings()
+
+
+def test_get_settings_requires_openai_key_when_forced(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    with pytest.raises(ValueError, match="OPENAI_API_KEY is not set"):
+        get_settings()
+
+
 def test_get_settings_uses_openai_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
