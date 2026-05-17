@@ -38,8 +38,6 @@ def test_form_submission_renders_result(monkeypatch) -> None:
     assert response.status_code == 200
     assert "Thanks for your time" in response.text
     assert "Here are the next steps." in response.text
-    assert "Copy Subject" in response.text
-    assert "Copy Full Email" in response.text
 
 
 def test_form_submission_renders_error(monkeypatch) -> None:

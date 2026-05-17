@@ -159,7 +159,7 @@ Run the full suite:
 .venv/bin/pytest -q
 ```
 
-The project enforces a minimum coverage threshold of `80%`.
+The project enforces a minimum coverage threshold of `95%`. See `AGENT.md` for the rationale and the required test categories.
 
 ## Project Structure
 
