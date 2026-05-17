@@ -25,30 +25,34 @@ The project exposes the same shared generator through three interfaces:
 
 ## Features
 
-- Multi-interface support: CLI, Web UI, REST API
+- Multi-interface support: CLI, Web UI, REST API — all calling the same shared core
 - Pluggable LLM provider support (OpenAI, OpenRouter)
-- Centralized prompt generation logic
-- Structured output (subject + body)
-- Automated test coverage (80%+)
-- Clean modular architecture
+- Strict output contract (schema-validated JSON; extra fields rejected)
+- Typed errors surfaced as a nested error envelope (`{error: {code, message}}`)
+- Structured logging per request (provider, model, attempts, outcome)
+- Automated test coverage enforced at 95%+
+- Clean modular architecture aligned with the contract in `AGENT.md`
 
 ## 🏗 Architecture
 
 User Input (CLI / API / Web)
         ↓
-Prompt Builder (`generator.py`)
+Prompt Builder (`prompt.py`)
         ↓
-LLM Provider (OpenAI / OpenRouter)
+LLM Provider Call (`providers.py` — OpenAI or OpenRouter)
         ↓
-Response Parsing + Validation
+Output Validation (`schemas.py` — strict `LLMRawOutput`) + Retry (`core.py`)
         ↓
-Formatted Output (Subject + Body)
+Typed Error or Formatted Output (Subject + Body + Model)
 
 Key Design Decisions:
-- Shared generation logic across all interfaces
-- Provider abstraction via configuration
-- Strict response validation using schemas
-- Separation of concerns (CLI, Web, Core logic)
+- One core, three entry points: web, CLI, and API all consume `core.generate_email`
+- Provider abstraction via configuration (`config.py`)
+- Strict response validation using pydantic schemas with `extra="forbid"`
+- Typed error model (`errors.py`) maps to a consistent error envelope across API and Web
+- Unified retry policy in the orchestrator, not per-provider
+
+See `AGENT.md` for the full contract this implementation must satisfy.
 
 ## Requirements
 
