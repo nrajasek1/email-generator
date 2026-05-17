@@ -4,10 +4,12 @@ import re
 import unicodedata
 
 from openai import OpenAI
+from pydantic import ValidationError
 
 from email_generator.config import get_settings
+from email_generator.errors import OutputContractError
 from email_generator.providers import _generate_with_openai, _generate_with_openrouter
-from email_generator.schemas import EmailRequest, EmailResponse
+from email_generator.schemas import EmailRequest, EmailResponse, LLMRawOutput
 
 
 def _normalize_text(text: str) -> str:
@@ -20,7 +22,7 @@ def _normalize_text(text: str) -> str:
         "—": "-",
         "―": "-",
         "…": "...",
-        " ": " ",
+        " ": " ",
         "​": "",
         "‑": "-",
         "•": "-",
@@ -56,10 +58,16 @@ def generate_email(request: EmailRequest) -> EmailResponse:
             reasoning_effort=settings.reasoning_effort,
             max_output_tokens=settings.max_output_tokens,
         )
-    subject = _normalize_text(str(parsed.get("subject", "")))
-    body = _normalize_text(str(parsed.get("body", "")))
 
-    if not subject or not body:
-        raise ValueError("The model response was missing a subject or body.")
+    try:
+        raw = LLMRawOutput.model_validate(parsed)
+    except ValidationError as exc:
+        raise OutputContractError(f"Model output did not match the required contract: {exc}") from exc
 
-    return EmailResponse(subject=subject, body=body, model=settings.model)
+    subject = _normalize_text(raw.subject)
+    body = _normalize_text(raw.body)
+
+    try:
+        return EmailResponse(subject=subject, body=body, model=settings.model)
+    except ValidationError as exc:
+        raise OutputContractError(f"Model output failed post-normalization validation: {exc}") from exc

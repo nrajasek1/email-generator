@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import pytest
 
 from email_generator.core import _normalize_text, generate_email
+from email_generator.errors import OutputContractError
 from email_generator.prompt import build_user_prompt
 from email_generator.providers import (
     _chat_message_to_text,
@@ -73,12 +74,12 @@ def test_extract_json_reads_embedded_json() -> None:
 
 
 def test_extract_json_rejects_empty_text() -> None:
-    with pytest.raises(ValueError, match="empty response"):
+    with pytest.raises(OutputContractError, match="empty response"):
         _extract_json("   ")
 
 
 def test_extract_json_rejects_missing_json() -> None:
-    with pytest.raises(ValueError, match="did not contain valid JSON"):
+    with pytest.raises(OutputContractError, match="did not contain valid JSON"):
         _extract_json("No JSON here")
 
 
@@ -228,10 +229,10 @@ def test_generate_email_normalizes_output(monkeypatch: pytest.MonkeyPatch) -> No
     assert result.body == "Use e-sign..."
 
 
-def test_generate_email_rejects_missing_subject_or_body(monkeypatch: pytest.MonkeyPatch) -> None:
+def _patch_openai_with_output(monkeypatch: pytest.MonkeyPatch, output_text: str) -> None:
     class FakeResponses:
         def create(self, **kwargs):
-            return SimpleNamespace(output_text='{"subject": "", "body": "World"}')
+            return SimpleNamespace(output_text=output_text)
 
     class FakeOpenAI:
         def __init__(self, api_key: str) -> None:
@@ -250,7 +251,32 @@ def test_generate_email_rejects_missing_subject_or_body(monkeypatch: pytest.Monk
     )
     monkeypatch.setattr("email_generator.core.OpenAI", FakeOpenAI)
 
-    with pytest.raises(ValueError, match="missing a subject or body"):
+
+def test_generate_email_rejects_empty_subject_in_raw_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_openai_with_output(monkeypatch, '{"subject": "", "body": "World"}')
+
+    with pytest.raises(OutputContractError, match="did not match the required contract"):
+        generate_email(EmailRequest(purpose="Follow up", tone="Warm", context="Share next steps"))
+
+
+def test_generate_email_rejects_extra_fields_in_raw_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    _patch_openai_with_output(
+        monkeypatch,
+        '{"subject": "Hello", "body": "World", "rogue": "value"}',
+    )
+
+    with pytest.raises(OutputContractError, match="did not match the required contract"):
+        generate_email(EmailRequest(purpose="Follow up", tone="Warm", context="Share next steps"))
+
+
+def test_generate_email_rejects_post_normalization_empty(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Body is non-empty raw but ASCII-strips to empty.
+    _patch_openai_with_output(
+        monkeypatch,
+        '{"subject": "Hello", "body": "\\u4e2d\\u6587"}',
+    )
+
+    with pytest.raises(OutputContractError, match="failed post-normalization validation"):
         generate_email(EmailRequest(purpose="Follow up", tone="Warm", context="Share next steps"))
 
 

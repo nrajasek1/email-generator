@@ -6,6 +6,7 @@ from typing import Any, Dict
 
 from openai import OpenAI
 
+from email_generator.errors import OutputContractError
 from email_generator.prompt import SYSTEM_INSTRUCTIONS, build_user_prompt
 from email_generator.schemas import EmailRequest
 
@@ -13,14 +14,14 @@ from email_generator.schemas import EmailRequest
 def _extract_json(raw_text: str) -> Dict[str, Any]:
     raw_text = raw_text.strip()
     if not raw_text:
-        raise ValueError("The model returned an empty response.")
+        raise OutputContractError("The model returned an empty response.")
 
     try:
         return json.loads(raw_text)
     except json.JSONDecodeError:
         match = re.search(r"\{.*\}", raw_text, re.DOTALL)
         if not match:
-            raise ValueError("The model response did not contain valid JSON.")
+            raise OutputContractError("The model response did not contain valid JSON.")
         return json.loads(match.group(0))
 
 
@@ -60,10 +61,10 @@ def _generate_with_openrouter(client: OpenAI, request: EmailRequest, model: str,
         content = _chat_message_to_text(response.choices[0].message)
         try:
             return _extract_json(content)
-        except ValueError as exc:
+        except OutputContractError as exc:
             last_error = exc
 
-    raise ValueError("OpenRouter returned an unusable response after 3 attempts.") from last_error
+    raise OutputContractError("OpenRouter returned an unusable response after 3 attempts.") from last_error
 
 
 def _generate_with_openai(client: OpenAI, request: EmailRequest, model: str, reasoning_effort: str, max_output_tokens: int) -> Dict[str, Any]:
