@@ -63,6 +63,9 @@ See `AGENT.md` for the full contract this implementation must satisfy.
 
 ## Quick Start
 
+> [!IMPORTANT]
+> The app **will not run** without an API key. You must complete steps 4–5 below — they are not optional. The repo intentionally does not ship with credentials.
+
 1. Create a virtual environment:
 
 ```bash
@@ -70,19 +73,53 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
-2. Install the project and development dependencies:
+2. Upgrade `pip` (required if your system Python is older than 3.10 — editable installs of pyproject.toml-only projects need pip ≥ 22):
+
+```bash
+pip install --upgrade pip
+```
+
+3. Install the project and development dependencies:
 
 ```bash
 pip install -e .[dev]
 ```
 
-3. Copy the example environment file:
+4. Copy the example environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-4. Add your API key to `.env`.
+> [!WARNING]
+> This step is required. The `.env` file is gitignored, so a fresh clone has no environment configuration.
+
+5. **Add a real API key to `.env`.** Open the file you just created and fill in **one** of these (not both required):
+
+```env
+OPENROUTER_API_KEY=sk-or-...
+# or
+OPENAI_API_KEY=sk-...
+```
+
+Get an OpenRouter key at <https://openrouter.ai/keys> (free tier available) or an OpenAI key at <https://platform.openai.com/api-keys>.
+
+6. Verify the install with the test suite (tests are mocked — they pass without an API key):
+
+```bash
+pytest -q
+```
+
+7. Start the web app and open it in your browser:
+
+```bash
+.venv/bin/uvicorn email_generator.web:app --reload
+```
+
+Then visit <http://127.0.0.1:8000/> for the form, or <http://127.0.0.1:8000/docs> for the live API reference.
+
+> [!NOTE]
+> If you skipped step 5, the form will return `{"error":{"code":"internal_error","message":"No API key found. Add OPENROUTER_API_KEY or OPENAI_API_KEY to your environment or .env file."}}` — that's the system telling you to set the key.
 
 ## Environment Variables
 
