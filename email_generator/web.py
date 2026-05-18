@@ -16,7 +16,25 @@ PACKAGE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(PACKAGE_DIR / "templates"))
 EMPTY_FORM_DATA = {"purpose": "", "tone": "", "context": ""}
 
-app = FastAPI(title="Email Generator")
+app = FastAPI(
+    title="Email Generator API",
+    version="0.1.0",
+    description=(
+        "Structured email generator with three entry points (web form, CLI, "
+        "JSON API) backed by a shared core.\n\n"
+        "**Error envelope.** All non-success responses share the shape "
+        "`{\"error\": {\"code\": \"...\", \"message\": \"...\"}}`. Known codes:\n"
+        "- `input_invalid` (400) — request body failed schema validation\n"
+        "- `output_contract` (502) — LLM output failed validation after retries\n"
+        "- `provider_error` (502) — reserved for upstream provider failures\n"
+        "- `internal_error` (500) — unexpected server-side failure\n\n"
+        "See `AGENT.md` in the repository for the full design contract."
+    ),
+    contact={"name": "Email Generator", "url": "https://github.com/nrajasek1/email-generator"},
+    openapi_tags=[
+        {"name": "generation", "description": "Email generation endpoints."},
+    ],
+)
 app.include_router(api_router)
 
 
