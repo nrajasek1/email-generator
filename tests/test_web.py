@@ -117,3 +117,21 @@ def test_api_generate_returns_input_invalid_envelope_for_missing_field() -> None
     assert response.status_code == 400
     body = response.json()
     assert body["error"]["code"] == "input_invalid"
+
+
+def test_api_generate_wraps_unexpected_exception_in_envelope(monkeypatch) -> None:
+    monkeypatch.setattr(
+        "email_generator.api.generate_email",
+        lambda request: (_ for _ in ()).throw(RuntimeError("network died")),
+    )
+
+    non_raising_client = TestClient(app, raise_server_exceptions=False)
+    response = non_raising_client.post(
+        "/api/generate",
+        json={"purpose": "P", "tone": "T", "context": "C"},
+    )
+
+    assert response.status_code == 500
+    assert response.json() == {
+        "error": {"code": "internal_error", "message": "network died"}
+    }
