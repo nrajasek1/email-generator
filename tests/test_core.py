@@ -65,6 +65,11 @@ def test_extract_json_rejects_missing_json() -> None:
         _extract_json("No JSON here")
 
 
+def test_extract_json_rejects_malformed_embedded_json() -> None:
+    with pytest.raises(OutputContractError, match="malformed JSON"):
+        _extract_json('prefix {"key":} suffix')
+
+
 def test_normalize_text_replaces_unicode_punctuation_and_spacing() -> None:
     normalized = _normalize_text("Hello—world…  \n\n\nLet's go‑now")
 

@@ -22,7 +22,12 @@ def _extract_json(raw_text: str) -> Dict[str, Any]:
         match = re.search(r"\{.*\}", raw_text, re.DOTALL)
         if not match:
             raise OutputContractError("The model response did not contain valid JSON.")
-        return json.loads(match.group(0))
+        try:
+            return json.loads(match.group(0))
+        except json.JSONDecodeError as exc:
+            raise OutputContractError(
+                f"The model response contained malformed JSON: {exc}"
+            ) from exc
 
 
 def _chat_message_to_text(message: Any) -> str:

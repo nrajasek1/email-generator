@@ -40,6 +40,14 @@ async def _handle_request_validation_error(request: Request, exc: RequestValidat
     )
 
 
+@app.exception_handler(Exception)
+async def _handle_unexpected_error(request: Request, exc: Exception) -> JSONResponse:
+    return JSONResponse(
+        status_code=500,
+        content=_error_envelope("internal_error", str(exc) or exc.__class__.__name__),
+    )
+
+
 def _render_page(
     request: Request,
     *,
