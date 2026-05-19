@@ -67,7 +67,7 @@ def test_form_submission_renders_error(monkeypatch) -> None:
         },
     )
 
-    assert response.status_code == 400
+    assert response.status_code == 500
     assert "boom" in response.text
 
 

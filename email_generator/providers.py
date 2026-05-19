@@ -6,7 +6,7 @@ from typing import Any, Dict
 
 from openai import OpenAI
 
-from email_generator.errors import OutputContractError
+from email_generator.errors import OutputContractError, ProviderError
 from email_generator.prompt import SYSTEM_INSTRUCTIONS, build_user_prompt
 from email_generator.schemas import EmailRequest
 
@@ -19,7 +19,7 @@ def _extract_json(raw_text: str) -> Dict[str, Any]:
     try:
         return json.loads(raw_text)
     except json.JSONDecodeError:
-        match = re.search(r"\{.*\}", raw_text, re.DOTALL)
+        match = re.search(r"\{.*?\}", raw_text, re.DOTALL)
         if not match:
             raise OutputContractError("The model response did not contain valid JSON.")
         try:
@@ -31,6 +31,11 @@ def _extract_json(raw_text: str) -> Dict[str, Any]:
 
 
 def _chat_message_to_text(message: Any) -> str:
+    """Extract text content from an OpenAI message object.
+    
+    Handles various content shapes: strings, lists of dicts/objects,
+    and defensive fallbacks for unexpected structures.
+    """
     content = getattr(message, "content", "")
     if isinstance(content, str):
         return content
@@ -53,14 +58,17 @@ def _chat_message_to_text(message: Any) -> str:
 
 
 def _generate_with_openrouter(client: OpenAI, request: EmailRequest, model: str, max_output_tokens: int) -> Dict[str, Any]:
-    response = client.chat.completions.create(
-        model=model,
-        messages=[
-            {"role": "system", "content": SYSTEM_INSTRUCTIONS},
-            {"role": "user", "content": build_user_prompt(request)},
-        ],
-        max_tokens=max_output_tokens,
-    )
+    try:
+        response = client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": SYSTEM_INSTRUCTIONS},
+                {"role": "user", "content": build_user_prompt(request)},
+            ],
+            max_tokens=max_output_tokens,
+        )
+    except Exception as exc:
+        raise ProviderError(f"OpenRouter client error: {exc}") from exc
     content = _chat_message_to_text(response.choices[0].message)
     return _extract_json(content)
 
@@ -74,6 +82,9 @@ def _generate_with_openai(client: OpenAI, request: EmailRequest, model: str, rea
     }
     if reasoning_effort.lower() != "none":
         request_kwargs["reasoning"] = {"effort": reasoning_effort}
+    try:
+        response = client.responses.create(**request_kwargs)
+    except Exception as exc:
+        raise ProviderError(f"OpenAI client error: {exc}") from exc
 
-    response = client.responses.create(**request_kwargs)
     return _extract_json(response.output_text)

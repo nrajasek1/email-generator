@@ -1184,8 +1184,21 @@
           const target = document.getElementById(targetId);
           if (!target) return;
 
+          const text = target.textContent || "";
+
           try {
-            await navigator.clipboard.writeText(target.textContent || "");
+            // Modern Clipboard API
+            if (navigator.clipboard?.writeText) {
+              await navigator.clipboard.writeText(text);
+            } else {
+              // Fallback for older browsers
+              const textarea = document.createElement("textarea");
+              textarea.value = text;
+              document.body.appendChild(textarea);
+              textarea.select();
+              document.execCommand("copy");
+              document.body.removeChild(textarea);
+            }
             showCopyStatus("Copied to clipboard");
           } catch (error) {
             showCopyStatus("Copy failed — select manually");

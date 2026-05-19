@@ -1,14 +1,15 @@
 # AI Email Generator
 
 ## 🚀 Overview
-This project is an AI-powered email generation system that creates structured emails (subject + body) based on user intent.
 
-It is designed as a multi-interface application supporting:
+This is a **validated, contract-driven AI service component** for generating structured emails that can be safely consumed by downstream systems.
+
+Three inputs (purpose, tone, context) → one guaranteed structured output or explicit failure. The same core powers three interfaces:
 - CLI (Command Line)
 - Web UI
 - REST API
 
-The system demonstrates how to build production-ready AI applications using modular architecture, configurable LLM providers, and test-driven development.
+The system demonstrates how to build production-ready AI applications using modular architecture, configurable LLM providers, strict schema validation, and test-driven development.
 
 
 Generate a plain-text email subject and body from three inputs:
@@ -53,6 +54,28 @@ Key Design Decisions:
 - Unified retry policy in the orchestrator, not per-provider
 
 See `AGENT.md` for the full contract this implementation must satisfy.
+
+## 🔒 Output Contract
+
+All responses are **strictly schema-validated** end-to-end. **Every call returns exactly one of:**
+
+1. ✅ **Valid response** — `{subject, body, model}` with guaranteed structure, no extra fields, ready to use
+2. ❌ **Explicit error** — Typed error envelope with code, message, and HTTP status — never ambiguous, never partial
+
+### Validation guarantees:
+
+- ✅ **Guaranteed structure:** Every success response contains exactly `subject`, `body`, and `model` — no extra fields, never partial output
+- ✅ **Strict validation:** LLM output is validated against a strict Pydantic schema with `extra="forbid"` — undocumented keys are rejected
+- ✅ **Fail-safe retry:** On contract failure (malformed JSON, extra fields, empty subject/body), the system automatically retries up to 3 times
+- ✅ **Explicit failure:** If all retries fail, a typed error is raised with code `output_contract` and HTTP 502 — callers never receive partial or ambiguous results
+- ✅ **No hallucination from untrusted LLM:** System instructions prohibit inventing pricing, names, links, or facts; all concrete claims must trace back to provided context
+
+## 📋 Guarantees
+
+- **Predictability:** Output format is stable and never changes between versions (unless explicitly versioned in `AGENT.md`)
+- **No surprise format drift:** Subject + body structure remains identical; schema additions are non-breaking and documented
+- **Transparent errors:** Failures are typed and mapped to the standard error envelope; callers know exactly what went wrong
+- **System-ready:** The API is the primary integration point; all interfaces (CLI, web, API) consume the same validated core
 
 ## Requirements
 

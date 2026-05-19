@@ -114,5 +114,5 @@ def generate_from_form(
             request,
             error=str(exc),
             form_data=form_data,
-            status_code=400,
+            status_code=500,
         )

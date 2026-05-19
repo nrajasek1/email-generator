@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 def _normalize_text(text: str) -> str:
+    """Normalize text: replaces unicode punctuation, newlines, spaces."""
     replacements = {
         "‘": "'",
         "’": "'",
@@ -78,6 +79,11 @@ def _build_response(parsed: Dict[str, Any], model: str) -> EmailResponse:
 
 
 def generate_email(request: EmailRequest) -> EmailResponse:
+    """Generate a validated email response.
+    
+    Safety note: Never logs api_key or other secrets; only logs provider,
+    model, attempts, and error messages.
+    """
     settings = get_settings()
     client_kwargs = {"api_key": settings.api_key}
     if settings.base_url:
@@ -103,7 +109,7 @@ def generate_email(request: EmailRequest) -> EmailResponse:
             continue
 
         logger.info(
-            "generated email (provider=%s model=%s attempts=%d)",
+            "generated email (provider=%s model=%s attempts=%d outcome=success)",
             settings.provider,
             settings.model,
             attempt,

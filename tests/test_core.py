@@ -257,3 +257,68 @@ def test_generate_with_openai_parses_response_output_text() -> None:
     )
 
     assert parsed == {"subject": "Hello", "body": "World"}
+
+
+def test_generate_with_openai_raises_provider_error_on_client_failure() -> None:
+    from email_generator.errors import ProviderError
+
+    class FailingResponses:
+        def create(self, **kwargs):
+            raise RuntimeError("Network timeout")
+
+    client = SimpleNamespace(responses=FailingResponses())
+
+    with pytest.raises(ProviderError, match="OpenAI client error"):
+        _generate_with_openai(
+            client=client,
+            request=EmailRequest(purpose="Intro", tone="Warm", context="Context"),
+            model="gpt-5-mini",
+            reasoning_effort="none",
+            max_output_tokens=120,
+        )
+
+
+def test_generate_with_openrouter_raises_provider_error_on_client_failure() -> None:
+    from email_generator.errors import ProviderError
+
+    class FailingChatCompletions:
+        def create(self, **kwargs):
+            raise RuntimeError("API rate limit exceeded")
+
+    client = SimpleNamespace(chat=SimpleNamespace(completions=FailingChatCompletions()))
+
+    with pytest.raises(ProviderError, match="OpenRouter client error"):
+        _generate_with_openrouter(
+            client=client,
+            request=EmailRequest(purpose="Intro", tone="Warm", context="Context"),
+            model="openrouter/free",
+            max_output_tokens=120,
+        )
+
+
+def test_extract_json_uses_non_greedy_regex_for_embedded_json() -> None:
+    # Ensure non-greedy matching stops at first closing brace
+    text = 'prefix {"subject": "Hello", "body": "World"} suffix {"extra": "ignored"}'
+    parsed = _extract_json(text)
+    
+    # Should extract first JSON object only
+    assert parsed == {"subject": "Hello", "body": "World"}
+    assert "ignored" not in str(parsed)
+
+
+def test_generate_email_never_logs_api_key(openai_settings, patch_openai, caplog: pytest.LogCaptureFixture) -> None:
+    """Verify that API keys are never exposed in log output."""
+    patch_openai(openai_settings, '{"subject": "Hi", "body": "There"}')
+    caplog.set_level(logging.DEBUG)  # Capture all log levels
+
+    generate_email(EmailRequest(purpose="P", tone="T", context="C"))
+
+    # Reconstruct full log output
+    full_log = "\n".join(r.getMessage() for r in caplog.records)
+    
+    # Ensure no API key is logged
+    assert "key-123" not in full_log
+    assert "api_key" not in full_log.lower()
+    # But provider and model should be logged
+    assert "openai" in full_log
+    assert "gpt-5-mini" in full_log
